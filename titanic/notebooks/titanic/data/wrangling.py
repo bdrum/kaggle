@@ -7,23 +7,25 @@ import numpy as np
 import math
 
 
-def wrangling(df: pd.DataFrame) -> pd.DataFrame:
+def wrangling(df: pd.DataFrame, isTest: bool = False) -> pd.DataFrame:
     # drop passenger id
 
     df = df.drop("PassengerId", axis=1)
 
     # fill skipped embarked info
 
-    df.iloc[61, 6] = 1
-    df.iloc[829, 6] = 1
-    df.iloc[61, 10] = "S"
-    df.iloc[829, 10] = "S"
+    if isTest:
+        df.iloc[61, 6] = 1
+        df.iloc[829, 6] = 1
+        df.iloc[61, 10] = "S"
+        df.iloc[829, 10] = "S"
 
     # repalce empty Fare with mean for class
 
     fare_class = df.groupby("Pclass").Fare.mean()
     df.Fare = df[["Pclass", "Fare"]].apply(
-        lambda c: fare_class[c.Pclass] if c.Fare == 0 else c.Fare, axis=1
+        lambda c: fare_class[c.Pclass] if c.Fare == 0 or pd.isna(c.Fare) else c.Fare,
+        axis=1,
     )
 
     # create separate feature for name title
@@ -73,9 +75,20 @@ def wrangling(df: pd.DataFrame) -> pd.DataFrame:
     )
     df["Familiars"] = df.SibSp + df.Parch
 
+    # first letter from ticket feature
+
+    df["TicketLetter"] = df.Ticket.apply(
+        lambda t: t[0] if not str(t).isnumeric() or pd.isna(t) else "X"
+    )
+
+    # add length of name feature
+
+    df["LenName"] = df.Name.apply(len)
+
     # Drop redundant columns
 
-    df = df.drop("Survived", axis=1)
+    if isTest:
+        df = df.drop("Survived", axis=1)
     df = df.drop("Name", axis=1)
     df = df.drop("Cabin", axis=1)
     df = df.drop("Ticket", axis=1)
